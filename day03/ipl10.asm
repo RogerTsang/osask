@@ -67,7 +67,7 @@ retry:
 readnext:
     ; reading one by one can jump to next track
     MOV AX, ES
-    ADD AX, 512/16 ; add 0x200 (512 byte) offset to memory buffer
+    ADD AX, 0x20 ; add 0x200 (512 byte) offset to memory buffer
     MOV ES, AX
 
     ADD CL, 1 ; next sector
@@ -92,8 +92,8 @@ error:
     JMP putchar
 
 success:
-    MOV SI, sucmsg
-    JMP putchar
+    MOV [0x0ff0], CH ; Copy Constant CYLS to memory 0x0ff0
+    JMP 0xc200
 
 putchar:
     MOV AL, [SI] ; fetch character ASCII code to AL reg
@@ -120,11 +120,6 @@ errmsg:
     DB "Err: Cannot Load Floppy Disk"
     DB 0x0a
     DB 0x00
-sucmsg:
-    DB 0x0a, 0x0a ; 2 carriage returns
-    DB "Successfully read data from FLoppy Disk"
-    DB 0x0a
-    DB 0x00
     
 ; RESB 0x1fe-$
 ; $ stands for current pos
@@ -132,8 +127,3 @@ sucmsg:
 ; fill until 0x1fe
 TIMES 0x1fe - ($-$$) DB 0
 DB 0x55, 0xaa
-
-DB 0xf0, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00
-RESB 4600
-DB 0xf0, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00
-RESB 1469432
