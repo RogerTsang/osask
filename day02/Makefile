@@ -2,11 +2,12 @@ osask.img : osask.asm
 	nasm -o $@ $<
 
 .PHONY:
-install:
-	cp osask.img ../
-
-run:
+run_vbox:
+	VBoxManage storageattach osask --storagectl "Floppy" --port 0 --device 0 --medium osask.img
 	virtualbox --startvm osask
 
+run:
+	qemu-system-i386 -drive file=osask.img,if=floppy
+
 clean:
-	rm osask.img ../osask.img
+	rm osask.img 
