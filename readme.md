@@ -1,4 +1,4 @@
-# OSASK implementation in Linux enviorment
+# OSASK implementation / Linux environment
 
 ## Acknowledgement
 
