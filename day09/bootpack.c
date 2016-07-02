@@ -4,9 +4,13 @@
 #include "graphic.h"
 #include "int.h"
 #include "fifo.h"
+#include "mouse.h"
+#include "keyboard.h"
 
-extern struct _fifo8 keyfifo; extern char keybuf[KB_BUFSIZE];
-extern struct _fifo8 moufifo; extern char moubuf[KB_BUFSIZE];
+extern struct _fifo8 keyfifo;
+extern char keybuf[KB_BUFSIZE];
+extern struct _fifo8 moufifo;
+extern char moubuf[MO_BUFSIZE];
 extern struct _mousedec mdec;
 
 void HariMain(void) {
