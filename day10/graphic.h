@@ -1,6 +1,7 @@
 #ifndef GRAPHIC_H
 #define GRAPHIC_H
 
+#define COLOUR_NULL    -1
 #define COLOUR_BLACK   0
 #define COLOUR_RED     1
 #define COLOUR_GREEN   2
@@ -17,9 +18,11 @@
 #define COLOUR_DCYAN   13
 #define COLOUR_DPURPLE 14
 #define COLOUR_DGREY   15
+#define COLOUR_INVIS   99
 
 #define CHARADDR(ch) (hankaku + (ch) * 16)
 
+#define MOU_SIZE       12
 /* Font File */
 extern char hankaku[4096];
 

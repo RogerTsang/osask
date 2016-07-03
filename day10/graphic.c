@@ -70,31 +70,27 @@ void init_screen(unsigned char *vram, int xsize, int ysize) {
 }
 
 void init_mouse_cursor8(char *mouse, char bc) {
-    static char cursor[16][16] = {
-        "************....",
-        "*OOOOOOOOO*.....",
-        "*OOOOOOOO*......",
-        "*OOOOOOO*.......",
-        "*OOOOOO*........",
-        "*OOOOO*.........",
-        "*OOOO*..........",
-        "*OOO*...........",
-        "*OO*............",
-        "*O*.............",
-        "**..............",
-        "*...............",
-        "................",
-        "................",
-        "................",
-        "................",
+    static char cursor[MOU_SIZE][MOU_SIZE] = {
+        "************",
+        "*OOOOOOOOO*.",
+        "*OOOOOOOO*..",
+        "*OOOOOOO*...",
+        "*OOOOOO*....",
+        "*OOOOO*.....",
+        "*OOOO*......",
+        "*OOO*.......",
+        "*OO*........",
+        "*O*.........",
+        "**..........",
+        "*...........",
     };
     int x, y;
-    for (y = 0; y < 16; y++) {
-        for (x = 0; x < 16; x++) {
+    for (y = 0; y < MOU_SIZE; y++) {
+        for (x = 0; x < MOU_SIZE; x++) {
             switch (cursor[y][x]) {
-                case '*' : mouse[y * 16 + x] = COLOUR_BLACK; break;
-                case 'O' : mouse[y * 16 + x] = COLOUR_WHITE; break;
-                case '.' : mouse[y * 16 + x] = bc; break;
+                case '*' : mouse[y * MOU_SIZE + x] = COLOUR_BLACK; break;
+                case 'O' : mouse[y * MOU_SIZE + x] = COLOUR_WHITE; break;
+                case '.' : mouse[y * MOU_SIZE + x] = bc; break;
             }
         }
     }
