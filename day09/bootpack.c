@@ -6,6 +6,7 @@
 #include "fifo.h"
 #include "mouse.h"
 #include "keyboard.h"
+#include "memory.h"
 
 extern struct _fifo8 keyfifo;
 extern char keybuf[KB_BUFSIZE];
@@ -20,6 +21,10 @@ void HariMain(void) {
     char dbmsg[40];
     char mcursor[256];
     char string[16];
+
+    /* Memory info */
+    unsigned int memtotal;
+    struct _memman *memman = (struct _memman *) MEMMAN_ADDR;
 
     /* Init GDT IDT */
     init_gdtidt();
@@ -40,9 +45,19 @@ void HariMain(void) {
     init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
     init_mouse_cursor8(mcursor, COLOUR_DCYAN);
     
-    /* Debug */
+    /* Hello Message */
     sprintf(dbmsg, "scrnx = %d", binfo->scrnx);
     putstr8_asc(binfo->vram, binfo->scrnx, 26, 64, COLOUR_WHITE, dbmsg);
+
+    /* Memory Check */
+    memtotal = memtest(0x00400000, 0xbfffffff); /* 3GB */
+    memman_init(memman);
+    memman_free(memman,0x00001000, 0x0009e000); /* 0x00001000 - 0x0009efff */
+    memman_free(memman, 0x00400000, memtotal - 0x00400000);
+    sprintf(string, "memory = %dKB", memtotal / 1024);
+    putstr8_asc(binfo->vram, binfo->scrnx, 26, 84, COLOUR_WHITE, string);
+    sprintf(string, " free  = %dKB", memman_total(memman) / 1024);
+    putstr8_asc(binfo->vram, binfo->scrnx, 26, 104, COLOUR_WHITE, string);
 
     /* Enable Interrupt */
     io_out8(PIC0_IMR, 0xf9);

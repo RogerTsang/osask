@@ -13,7 +13,7 @@ EDIMG    = edimg
 COPY     = cat
 DEL      = rm
 
-LIBRARIES = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj
+LIBRARIES = bootpack.obj naskfunc.obj hankaku.obj graphic.obj dsctbl.obj int.obj fifo.obj mouse.obj keyboard.obj memory.obj
 
 default :
 	$(MAKE) img

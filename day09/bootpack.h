@@ -3,6 +3,9 @@
 
 #define ADR_BOOTINFO	0x00000ff0
 
+#define EFLAGS_AC_BIT   0x00040000 /* Used for testing i486 */
+#define CR0_CACHE_DISABLE 0x60000000
+
 /* Low Level Operations */
 void io_hlt(void);
 void io_cli(void);
@@ -17,6 +20,8 @@ int io_in32(int port);
 
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
+int load_cr0();
+void store_cr0(int cr0);
 
 void write_mem8(int addr, int data);
 

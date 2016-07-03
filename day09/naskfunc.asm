@@ -11,9 +11,12 @@
     GLOBAL _io_in8, _io_in16, _io_in32
     GLOBAL _io_out8, _io_out16, _io_out32
     GLOBAL _io_load_eflags, _io_store_eflags
+    GLOBAL _load_cr0, _store_cr0
     GLOBAL _load_gdtr, _load_idtr
     ; Interrupt Handler Function
     GLOBAL _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
+    ; Memory Test Function
+    GLOBAL _memtest_sub
     ; External C function for OS dev
     EXTERN _inthandler21, _inthandler27, _inthandler2c
 
@@ -81,6 +84,7 @@ _io_out32: ;void io_out32(int port, int data);
     OUT DX, EAX ; OUT port, outvalue
     RET
 
+; Eflags
 _io_load_eflags: ;int io_load_eflags(void);
     PUSHFD ; Push eflags to stack
     POP EAX; pop eflags to EAX, EAX acts as ret reg
@@ -90,6 +94,16 @@ _io_store_eflags: ;void io_store_eflags(int eflags);
     MOV EDX, [ESP+4]
     PUSH EDX
     POPFD ; restore eflags register
+    RET
+
+; CR0
+_load_cr0: ;int load_cr0(void);
+    MOV EAX, CR0
+    RET
+
+_store_cr0: ;void store_cr0(int cr0);
+    MOV EAX, [ESP+4]
+    MOV CR0, EAX
     RET
 
 ; Global segmentation descriptor table
@@ -157,3 +171,41 @@ _asm_inthandler2c:
     POP DS
     POP ES
     IRETD
+
+; Memory Test Function
+_memtest_sub: ;unsigned int memtest_sub(unsigned int start, unsigned int end);
+    PUSH EDI
+    PUSH ESI
+    PUSH EBX
+    MOV ESI, 0xaa55aa55 ;pat0 = 0xaa55aa55
+    MOV EDI, 0x55aa55aa ;pat1 = 0x55aa55aa
+    MOV EAX, [ESP+12+4] ;i = start (return i)
+mts_loop:
+    MOV EBX, EAX ; p = i + 0xffc
+    ADD EBX, 0xffc
+    MOV EDX, [EBX] ; old = *p
+    MOV [EBX], ESI ; *p = pat0
+    XOR DWORD [EBX], 0xffffffff ; *p ^= 0xffffffff
+    CMP [EBX], EDI ; if(*p != pat1)
+    JNE mts_fin
+    
+    XOR DWORD [EBX], 0xffffffff ; *p ^= 0xffffffff
+    CMP [EBX], ESI ; if(*p != pat0)
+    JNE mts_fin
+
+    MOV [EBX], EDX ; *p = old
+    ADD EAX, 0x1000
+    CMP EAX, [ESP+12+8]
+    JBE mts_loop
+
+    POP EBX
+    POP ESI
+    POP EDI
+    RET
+
+mts_fin:
+    MOV [EBX], EDX; *p = old
+    POP EBX
+    POP ESI
+    POP EDI
+    RET
