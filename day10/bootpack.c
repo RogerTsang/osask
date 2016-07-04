@@ -19,7 +19,7 @@ void HariMain(void) {
     /* Fetch video info from asmhead */
     struct _bootinfo * binfo = (struct _bootinfo *) ADR_BOOTINFO;
     int i, mx, my;
-    char mcursor[256], string[32];
+    char string[32];
     struct _layerctl *lyrctl;
     struct _layer *lyr_back, *lyr_mouse;
     unsigned char *buf_back, buf_mouse[MOU_SIZE * MOU_SIZE];
@@ -35,8 +35,13 @@ void HariMain(void) {
     init_pic();
     io_sti();
 
+    /* Enable Interrupt */
+    io_out8(PIC0_IMR, 0xf9);
+    io_out8(PIC1_IMR, 0xef);
+
     /* Init Keyboard and Mouse */
     init_keyboard();
+    enable_mouse(&mdec);
 
     /* Memory Check */
     memtotal = memtest(0x00400000, 0xbfffffff); /* 3GB */
@@ -77,18 +82,10 @@ void HariMain(void) {
     putstr8_asc(buf_back, binfo->scrnx, 26, 84, COLOUR_WHITE, string);
     sprintf(string, " free  = %dKB", memfree / 1024);
     putstr8_asc(buf_back, binfo->scrnx, 26, 104, COLOUR_WHITE, string);
-    putblock8_8(buf_mouse, binfo->scrnx, MOU_SIZE, MOU_SIZE, mx, my, mcursor, 16);
 
     /* Refresh Screen */
-    layerctl_refresh(lyrctl);
+    layerctl_refresh(lyrctl, lyr_back, 0, 0, binfo->scrnx, binfo->scrny);
 
-    /* Enable Interrupt */
-    io_out8(PIC0_IMR, 0xf9);
-    io_out8(PIC1_IMR, 0xef);
-
-    /* Init Keyboard and Mouse */
-    enable_mouse(&mdec);
-    
     while (1) {
         io_cli(); /* Disable Interrupt */
         if (fifo8_status(&keyfifo) + fifo8_status(&moufifo) == 0) {
@@ -104,7 +101,7 @@ void HariMain(void) {
                 draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 0, 216, 18);
                 putstr8_asc(buf_back, binfo->scrnx, 200, 0, COLOUR_WHITE, string);
                 /* Refresh Screen */
-                layerctl_refresh(lyrctl);
+                layerctl_refresh(lyrctl, lyr_back, 200, 0, 216, 18);
             } else if (fifo8_status(&moufifo) != 0) {
                 /* Read mouse from buffer */
                 i = fifo8_get(&moufifo);
@@ -126,8 +123,7 @@ void HariMain(void) {
                     }
                     draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 20, 300, 38);
                     putstr8_asc(buf_back, binfo->scrnx, 200, 20, COLOUR_WHITE, string);
-                    /* Hide Mouse */
-                    layer_setheight(lyrctl, lyr_mouse, COLOUR_INVIS);
+                    layerctl_refresh(lyrctl, lyr_back, 200, 20, 300, 38);
                     /* Position Mouse */
                     mx += mdec.x;
                     my += mdec.y;
@@ -139,6 +135,7 @@ void HariMain(void) {
                     sprintf(string, "(%3d %3d)", mx, my);
                     draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 40, 300, 58);
                     putstr8_asc(buf_back, binfo->scrnx, 200, 40, COLOUR_WHITE, string);
+                    layerctl_refresh(lyrctl, lyr_back, 200, 40, 300, 58);
                     layer_slide(lyrctl, lyr_mouse, mx, my);
                 }
             }

@@ -34,6 +34,7 @@ void layer_free(struct _layerctl *ctl, struct _layer *lyr);
 
 /* Layer Control Functions */
 struct _layerctl *layerctl_init(struct _memman *man, unsigned char *vram, int xsize, int ysize);
-void layerctl_refresh(struct _layerctl *ctl);
+void layerctl_refresh(struct _layerctl *ctl, struct _layer *lyr, int bx0, int by0, int bx1, int by1);
+void layerctl_refreshsub(struct _layerctl *ctl, int vx0, int vy0, int vx1, int vy1);
 
 #endif
