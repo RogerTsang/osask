@@ -19,7 +19,7 @@ extern struct _mousedec mdec;
 void HariMain(void) {
     /* Fetch video info from asmhead */
     struct _bootinfo * binfo = (struct _bootinfo *) ADR_BOOTINFO;
-    int i, mx, my, counter;
+    int i, mx, my, count = 0;
     char string[32];
     struct _layerctl *lyrctl;
     struct _layer *lyr_back, *lyr_mouse, *lyr_win;
@@ -98,9 +98,16 @@ void HariMain(void) {
     layerctl_refresh(lyr_back, 0, 0, binfo->scrnx, binfo->scrny);
 
     while (1) {
-        io_cli(); /* Disable Interrupt */
+        /* Window Counter */
+        count++;
+        sprintf(string, "%10d", count);
+        draw_retangle8(buf_win, 160, COLOUR_GREY, 40, 28, 119, 43);
+        putstr8_asc(buf_win, 160, 40, 28, COLOUR_BLACK, string);
+        layerctl_refresh(lyr_win, 40, 28, 120, 44);
+        /* Disable Interrupt */
+        io_cli();
         if (fifo8_status(&keyfifo) + fifo8_status(&moufifo) == 0) {
-            io_stihlt(); /* Enable Interrupt and halt - no interrupt */
+            io_sti(); /* Enable Interrupt and halt - no interrupt */
         } else {
             if (fifo8_status(&keyfifo) != 0) {
                 /* Read key from buffer */

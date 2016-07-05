@@ -20,7 +20,7 @@ struct _layer {
 };
 
 struct _layerctl {
-    unsigned char *vram;
+    unsigned char *vram, *map;
     int xsize, ysize, top;
     struct _layer *layers[MAX_LAYERS];
     struct _layer layers0[MAX_LAYERS];
@@ -36,6 +36,7 @@ void layer_free(struct _layer *lyr);
 /* Layer Control Functions */
 struct _layerctl *layerctl_init(struct _memman *man, unsigned char *vram, int xsize, int ysize);
 void layerctl_refresh(struct _layer *lyr, int bx0, int by0, int bx1, int by1);
-void layerctl_refreshsub(struct _layerctl *ctl, int vx0, int vy0, int vx1, int vy1);
+void layerctl_refreshsub(struct _layerctl *ctl, int vx0, int vy0, int vx1, int vy1, int h0, int h1);
+void layerctl_refreshmap(struct _layerctl *ctl, int vx0, int vy0, int vx1, int vy1, int h0);
 
 #endif
