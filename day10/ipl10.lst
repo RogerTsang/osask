@@ -1,0 +1,160 @@
+     1 00000000                                 ; hello-os
+     2 00000000                                 ; TAB=4
+     3  = 0000000A                              CYLS EQU 10
+     4 00000000                                 
+     5                                          ORG 0x7c00
+     6 00007C00 EB 4E                           JMP entry
+     7 00007C02                                 
+     8 00007C02 90                              DB 0x90
+     9 00007C03 48 45 4C 4C 4F 49 50 4C         DB "HELLOIPL" ; name for starting sector
+    10 00007C0B 0200                            DW 512 ; sector size
+    11 00007C0D 01                              DB 1 ; cluster size
+    12 00007C0E                                 
+    13 00007C0E 0001                            DW 1 ; FAT starting position
+    14 00007C10 02                              DB 2 ; FAT number in total
+    15 00007C11 00E0                            DW 224 ; Root Folder Size
+    16 00007C13 0B40                            DW 2880 ; Disk Size (in sector)
+    17 00007C15 F0                              DB 0xf0 ; Disk Property
+    18 00007C16 0009                            DW 9 ; FAT length (in sector)
+    19 00007C18 0012                            DW 18 ; Number of sector in track
+    20 00007C1A 0002                            DW 2 ; Disk Scaner number in total
+    21 00007C1C 00000000                        DD 0 ;
+    22 00007C20 00000B40                        DD 2880;
+    23 00007C24                                 
+    24 00007C24 00 00 29                        DB 0x00, 0x00, 0x29; Magic Number
+    25 00007C27 FFFFFFFF                        DD 0xffffffff
+    26 00007C2B 48 45 4C 4C 4F 2D 4F 53 20 20   DB "HELLO-OS   " ; Name of the disk
+       00007C35 20 
+    27 00007C36 46 41 54 31 32 20 20 20         DB "FAT12   "    ; Name of the disk format
+    28 00007C3E 00 00 00 00 00 00 00 00 00 00   RESB 18
+       00007C48 00 00 00 00 00 00 00 00 
+    29 00007C50                                 
+    30 00007C50                                 ; Main Program
+    31 00007C50                                 entry:
+    32 00007C50                                     ; errmsg: floppy
+    33 00007C50 BC 7C00                             MOV SP, 0X7c00 ; init stack pointer
+    34 00007C53                                 
+    35 00007C53 B8 0000                             MOV AX, 0 ; init AX reg
+    36 00007C56                                     ; stack segment, data segment, extra segment
+    37 00007C56 8E D0                               MOV SS, AX
+    38 00007C58 8E D8                               MOV DS, AX
+    39 00007C5A                                     ; set extra segment to 0x0820
+    40 00007C5A B8 0820                             MOV AX, 0x0820;
+    41 00007C5D 8E C0                               MOV ES, AX
+    42 00007C5F                                     
+    43 00007C5F                                     ; BIOS low level disk service
+    44 00007C5F                                     ; Positioning
+    45 00007C5F B5 00                               MOV CH, 0 ; cylinder 
+    46 00007C61 B1 02                               MOV CL, 2 ; sector
+    47 00007C63 B6 00                               MOV DH, 0 ; head
+    48 00007C65 B2 00                               MOV DL, 0x00 ; disk drive: A
+    49 00007C67                                 
+    50 00007C67                                 readloop:
+    51 00007C67 BE 0000                             MOV SI, 0 ; init record counter
+    52 00007C6A                                 retry:
+    53 00007C6A B4 02                               MOV AH, 0x02 ; read sector command
+    54 00007C6C B0 01                               MOV AL, 1 ; read 1 sector (512 byte)
+    55 00007C6E                                     ; Invoke
+    56 00007C6E CD 13                               INT 0x13
+    57 00007C70 73 10                               JNC readnext; jump not carry
+    58 00007C72                                     ; failure
+    59 00007C72 83 C6 01                            ADD SI, 1
+    60 00007C75 83 FE 05                            CMP SI, 5
+    61 00007C78 73 2F                               JAE error; report error after 5 retries
+    62 00007C7A B4 00                               MOV AH, 0x00; reset disk drive command
+    63 00007C7C B2 00                               MOV DL, 0x00; reset disk drive A
+    64 00007C7E CD 13                               INT 0x13
+    65 00007C80 EB E8                               JMP retry
+    66 00007C82                                 
+    67 00007C82                                 readnext:
+    68 00007C82                                     ; reading one by one can jump to next track
+    69 00007C82 8C C0                               MOV AX, ES
+    70 00007C84 05 0020                             ADD AX, 0x20 ; add 0x200 (512 byte) offset to memory buffer
+    71 00007C87 8E C0                               MOV ES, AX
+    72 00007C89                                 
+    73 00007C89 80 C1 01                            ADD CL, 1 ; next sector
+    74 00007C8C 80 F9 12                            CMP CL, 18 ; one cylinder contains 18 sectors
+    75 00007C8F 76 D6                               JBE readloop ; jump if below or equal
+    76 00007C91                                     ; switch head
+    77 00007C91 B1 01                               MOV CL, 1
+    78 00007C93 80 C6 01                            ADD DH, 1 ; head
+    79 00007C96 80 FE 02                            CMP DH, 2
+    80 00007C99 72 CC                               JB readloop
+    81 00007C9B                                     ; switch cylinder
+    82 00007C9B B1 01                               MOV CL, 1
+    83 00007C9D B6 00                               MOV DH, 0
+    84 00007C9F 80 C5 01                            ADD CH, 1
+    85 00007CA2 80 FD 0A                            CMP CH, CYLS ; final cylinder
+    86 00007CA5 72 C0                               JB readloop
+    87 00007CA7                                     ; indicate success
+    88 00007CA7 EB 05                               JMP success
+    89 00007CA9                                 
+    90 00007CA9                                 error:
+    91 00007CA9 BE 7CCB                             MOV SI, errmsg
+    92 00007CAC EB 07                               JMP putchar
+    93 00007CAE                                 
+    94 00007CAE                                 success:
+    95 00007CAE 88 2E 0FF0                          MOV [0x0ff0], CH ; Copy Constant CYLS to memory 0x0ff0
+    96 00007CB2 E9 454B                             JMP 0xc200
+    97 00007CB5                                 
+    98 00007CB5                                 putchar:
+    99 00007CB5 8A 04                               MOV AL, [SI] ; fetch character ASCII code to AL reg
+   100 00007CB7 83 C6 01                            ADD SI, 1 ; increment SI to print msg byte by byte
+   101 00007CBA                                 
+   102 00007CBA 3C 00                               CMP AL, 0
+   103 00007CBC 74 0A                               JE  finish
+   104 00007CBE                                     ; BIOS interrupt setting
+   105 00007CBE B4 0E                               MOV AH, 0x0E ; Write Char in TTY mode command
+   106 00007CC0                                    ;MOV AL, AL ; Character is set already
+   107 00007CC0 B7 00                               MOV BH, 0 
+   108 00007CC2 B3 0F                               MOV BL, 15; Colour
+   109 00007CC4 CD 10                               INT 0x10 ; Call BIOS video Intertupt
+   110 00007CC6 EB ED                               JMP putchar
+   111 00007CC8                                 
+   112 00007CC8                                 ; End
+   113 00007CC8                                 finish:
+   114 00007CC8 F4                                  HLT
+   115 00007CC9 EB FD                               JMP finish
+   116 00007CCB                                 
+   117 00007CCB                                 ; Display
+   118 00007CCB                                 errmsg:
+   119 00007CCB 0A 0A                               DB 0x0a, 0x0a ; 2 carriage returns
+   120 00007CCD 45 72 72 3A 20 43 61 6E 6E 6F       DB "Err: Cannot Load Floppy Disk"
+       00007CD7 74 20 4C 6F 61 64 20 46 6C 6F 
+       00007CE1 70 70 79 20 44 69 73 6B 
+   121 00007CE9 0A                                  DB 0x0a
+   122 00007CEA 00                                  DB 0x00
+   123 00007CEB                                     
+   124 00007CEB                                 ; RESB 0x1fe-$
+   125 00007CEB                                 ; $ stands for current pos
+   126 00007CEB                                 ;$$ stands for begin pos
+   127 00007CEB                                 ; fill until 0x1fe
+   128 00007CEB 00 00 00 00 00 00 00 00 00 00   TIMES 0x1fe - ($-$$) DB 0
+       00007CF5 00 00 00 00 00 00 00 00 00 00 
+       00007CFF 00 00 00 00 00 00 00 00 00 00 
+       00007D09 00 00 00 00 00 00 00 00 00 00 
+       00007D13 00 00 00 00 00 00 00 00 00 00 
+       00007D1D 00 00 00 00 00 00 00 00 00 00 
+       00007D27 00 00 00 00 00 00 00 00 00 00 
+       00007D31 00 00 00 00 00 00 00 00 00 00 
+       00007D3B 00 00 00 00 00 00 00 00 00 00 
+       00007D45 00 00 00 00 00 00 00 00 00 00 
+       00007D4F 00 00 00 00 00 00 00 00 00 00 
+       00007D59 00 00 00 00 00 00 00 00 00 00 
+       00007D63 00 00 00 00 00 00 00 00 00 00 
+       00007D6D 00 00 00 00 00 00 00 00 00 00 
+       00007D77 00 00 00 00 00 00 00 00 00 00 
+       00007D81 00 00 00 00 00 00 00 00 00 00 
+       00007D8B 00 00 00 00 00 00 00 00 00 00 
+       00007D95 00 00 00 00 00 00 00 00 00 00 
+       00007D9F 00 00 00 00 00 00 00 00 00 00 
+       00007DA9 00 00 00 00 00 00 00 00 00 00 
+       00007DB3 00 00 00 00 00 00 00 00 00 00 
+       00007DBD 00 00 00 00 00 00 00 00 00 00 
+       00007DC7 00 00 00 00 00 00 00 00 00 00 
+       00007DD1 00 00 00 00 00 00 00 00 00 00 
+       00007DDB 00 00 00 00 00 00 00 00 00 00 
+       00007DE5 00 00 00 00 00 00 00 00 00 00 
+       00007DEF 00 00 00 00 00 00 00 00 00 00 
+       00007DF9 00 00 00 00 00 
+   129 00007DFE 55 AA                           DB 0x55, 0xaa

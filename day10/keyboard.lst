@@ -1,0 +1,71 @@
+     1 00000000                                 [FORMAT "WCOFF"]
+     2 00000000                                 [INSTRSET "i486p"]
+     3 00000000                                 [OPTIMIZE 1]
+     4 00000000                                 [OPTION 1]
+     5 00000000                                 [BITS 32]
+     6 00000000                                 	EXTERN	_io_in8
+     7 00000000                                 	EXTERN	_io_out8
+     8 00000000                                 	EXTERN	_fifo8_put
+     9 00000000                                 	EXTERN	_fifo8_init
+    10 00000000                                 [FILE "keyboard.c"]
+    11                                          [SECTION .text]
+    12 00000000                                 	GLOBAL	_wait_KBC_sendready
+    13 00000000                                 _wait_KBC_sendready:
+    14 00000000 55                              	PUSH	EBP
+    15 00000001 89 E5                           	MOV	EBP,ESP
+    16 00000003                                 L6:
+    17 00000003 6A 64                           	PUSH	100
+    18 00000005 E8 [00000000]                   	CALL	_io_in8
+    19 0000000A 5A                              	POP	EDX
+    20 0000000B 83 E0 02                        	AND	EAX,2
+    21 0000000E 75 F3                           	JNE	L6
+    22 00000010 C9                              	LEAVE
+    23 00000011 C3                              	RET
+    24 00000012                                 	GLOBAL	_inthandler21
+    25 00000012                                 _inthandler21:
+    26 00000012 55                              	PUSH	EBP
+    27 00000013 89 E5                           	MOV	EBP,ESP
+    28 00000015 6A 61                           	PUSH	97
+    29 00000017 6A 20                           	PUSH	32
+    30 00000019 E8 [00000000]                   	CALL	_io_out8
+    31 0000001E 6A 60                           	PUSH	96
+    32 00000020 E8 [00000000]                   	CALL	_io_in8
+    33 00000025 0F B6 C0                        	MOVZX	EAX,AL
+    34 00000028 50                              	PUSH	EAX
+    35 00000029 68 [00000000]                   	PUSH	_keyfifo
+    36 0000002E E8 [00000000]                   	CALL	_fifo8_put
+    37 00000033 C9                              	LEAVE
+    38 00000034 C3                              	RET
+    39 00000035                                 	GLOBAL	_init_keyboard
+    40 00000035                                 _init_keyboard:
+    41 00000035 55                              	PUSH	EBP
+    42 00000036 89 E5                           	MOV	EBP,ESP
+    43 00000038 68 [00000020]                   	PUSH	_keybuf
+    44 0000003D 6A 20                           	PUSH	32
+    45 0000003F 68 [00000000]                   	PUSH	_keyfifo
+    46 00000044 E8 [00000000]                   	CALL	_fifo8_init
+    47 00000049 E8 FFFFFFB2                     	CALL	_wait_KBC_sendready
+    48 0000004E 6A 60                           	PUSH	96
+    49 00000050 6A 64                           	PUSH	100
+    50 00000052 E8 [00000000]                   	CALL	_io_out8
+    51 00000057 E8 FFFFFFA4                     	CALL	_wait_KBC_sendready
+    52 0000005C 6A 47                           	PUSH	71
+    53 0000005E 6A 60                           	PUSH	96
+    54 00000060 E8 [00000000]                   	CALL	_io_out8
+    55 00000065 C9                              	LEAVE
+    56 00000066 C3                              	RET
+    57 00000067                                 	GLOBAL	_keyfifo
+    58                                          [SECTION .data]
+    59 00000000                                 	ALIGNB	16
+    60 00000000                                 _keyfifo:
+    61 00000000 00 00 00 00 00 00 00 00 00 00   	RESB	24
+       0000000A 00 00 00 00 00 00 00 00 00 00 
+       00000014 00 00 00 00 
+    62 00000018                                 	GLOBAL	_keybuf
+    63                                          [SECTION .data]
+    64 00000018 00 00 00 00 00 00 00 00         	ALIGNB	16
+    65 00000020                                 _keybuf:
+    66 00000020 00 00 00 00 00 00 00 00 00 00   	RESB	32
+       0000002A 00 00 00 00 00 00 00 00 00 00 
+       00000034 00 00 00 00 00 00 00 00 00 00 
+       0000003E 00 00 

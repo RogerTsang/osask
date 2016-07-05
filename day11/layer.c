@@ -21,7 +21,8 @@ void layer_setbuf(struct _layer *lyr, unsigned char *buf, int xsize, int ysize, 
     lyr->col_inv = col_inv;
 }
 
-void layer_setheight(struct _layerctl *ctl, struct _layer *lyr, int height) {
+void layer_setheight(struct _layer *lyr, int height) {
+    struct _layerctl *ctl = lyr->ctl;
     int h, old = lyr->height;
 
     /* Range Constrain */
@@ -49,7 +50,7 @@ void layer_setheight(struct _layerctl *ctl, struct _layer *lyr, int height) {
             ctl->top--;
         }
         /* Refresh Display */
-        layerctl_refresh(ctl, lyr, 0, 0, lyr->bxsize, lyr->bysize);
+        layerctl_refresh(lyr, 0, 0, lyr->bxsize, lyr->bysize);
     } else if (height > old) {
         /* Going Higher */
         if (old >= 0) {
@@ -68,29 +69,30 @@ void layer_setheight(struct _layerctl *ctl, struct _layer *lyr, int height) {
             ctl->layers[height] = lyr;
             ctl->top++;
         }
-        layerctl_refresh(ctl, lyr, 0, 0, lyr->bxsize, lyr->bysize);
+        layerctl_refresh(lyr, 0, 0, lyr->bxsize, lyr->bysize);
     }
     /* If nothing change, don't refresh */
     return;
 }
 
-void layer_slide(struct _layerctl *ctl, struct _layer *lyr, int vx0, int vy0) {
+void layer_slide(struct _layer *lyr, int vx0, int vy0) {
     int old_vx0 = lyr->vx0;
     int old_vy0 = lyr->vy0;
     lyr->vx0 = vx0;
     lyr->vy0 = vy0;
     if (lyr->height != LAYER_HIDDEN) {
         /* Refresh Old Block */
-        layerctl_refreshsub(ctl, old_vx0, old_vy0, old_vx0 + lyr->bxsize, old_vy0 + lyr->bysize);
+        layerctl_refreshsub(lyr->ctl, old_vx0, old_vy0, old_vx0 + lyr->bxsize, old_vy0 + lyr->bysize);
         /* Refresh New Block */
-        layerctl_refreshsub(ctl, vx0, vy0, vx0 + lyr->bxsize, vy0 + lyr->bysize);
+        layerctl_refreshsub(lyr->ctl, vx0, vy0, vx0 + lyr->bxsize, vy0 + lyr->bysize);
     }
     return;
 }
 
-void layer_free(struct _layerctl *ctl, struct _layer *lyr) {
+void layer_free(struct _layer *lyr) {
+    struct _layerctl *ctl = ctl;
     if (lyr->height != LAYER_HIDDEN) {
-        layer_setheight(ctl, lyr, LAYER_HIDDEN);
+        layer_setheight(lyr, LAYER_HIDDEN);
     }
     lyr->flags = LAYER_UNUSED;
     return;
@@ -111,11 +113,13 @@ struct _layerctl *layerctl_init(struct _memman *man, unsigned char *vram, int xs
     ctl->top = LAYER_EMPTY;
     for (i = 0; i < MAX_LAYERS; i++) {
         ctl->layers0[i].flags = LAYER_UNUSED;
+        ctl->layers0[i].ctl = ctl;
     }
     return ctl;
 }
 
-void layerctl_refresh(struct _layerctl *ctl, struct _layer *lyr, int bx0, int by0, int bx1, int by1) {
+void layerctl_refresh(struct _layer *lyr, int bx0, int by0, int bx1, int by1) {
+    struct _layerctl *ctl = lyr->ctl;
     if (lyr->height != LAYER_HIDDEN) {
         layerctl_refreshsub(ctl, lyr->vx0 + bx0, lyr->vy0 + by0, lyr->vx0 + bx1, lyr->vy0 + by1);
     }
@@ -128,6 +132,11 @@ void layerctl_refreshsub(struct _layerctl *ctl, int vx0, int vy0, int vx1, int v
     unsigned char *buf, c;
     struct _layer *lyr;
     unsigned char *vram = ctl->vram;
+    /* Prohibit Off Screen Rendering */
+    if (vx0 < 0) vx0 = 0;
+    if (vy0 < 0) vy0 = 0;
+    if (vx1 > ctl->xsize) vx1 = ctl->xsize;
+    if (vy1 > ctl->ysize) vy1 = ctl->ysize;
     for (h = 0; h <= ctl->top; h++) {
         lyr = ctl->layers[h];
         buf = lyr->buf;
@@ -153,4 +162,5 @@ void layerctl_refreshsub(struct _layerctl *ctl, int vx0, int vy0, int vx1, int v
             }
         }
     }
+    return;
 }
