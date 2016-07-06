@@ -78,6 +78,7 @@ void inthandler20(int *esp) {
     if (timerctl.next > timerctl.count) {
         return; /* Interleave if no deadline */
     }
+    /* Traverse using timer */
     for (i = 0; i < timerctl.using; i++) {
         if (timerctl.timers[i]->timeout > timerctl.count) {
             break; /* Interleave if timeout is met */

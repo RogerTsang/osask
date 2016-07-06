@@ -24,9 +24,9 @@ void HariMain(void) {
     int i, mx, my;
     char string[32];
     /* Timer */
-    struct _fifo8 timerfifo0, timerfifo1, timerfifo2;
-    char timerbuf0[TIMER_BUFSIZE], timerbuf1[TIMER_BUFSIZE], timerbuf2[TIMER_BUFSIZE];
-    struct _timer *timer0, *timer1, *timer2;
+    struct _fifo8 timerfifo, timerfifo1, timerfifo2;
+    char timerbuf[TIMER_BUFSIZE], timerbuf1[TIMER_BUFSIZE], timerbuf2[TIMER_BUFSIZE];
+    struct _timer *timer, *timer1, *timer2;
     /* Layer */
     struct _layerctl *lyrctl;
     struct _layer *lyr_back, *lyr_mouse, *lyr_win;
@@ -42,10 +42,10 @@ void HariMain(void) {
     /* Init Programable Interval Timer */
     init_pit();
     /* Timer 0 10sec */
-    fifo8_init(&timerfifo0, TIMER_BUFSIZE, timerbuf0);
-    timer0 = timer_alloc();
-    timer_init(timer0, &timerfifo0, 1);
-    timer_settime(timer0, 500);
+    fifo8_init(&timerfifo, TIMER_BUFSIZE, timerbuf);
+    timer = timer_alloc();
+    timer_init(timer, &timerfifo, 1);
+    timer_settime(timer, 1000);
     /* Timer 1 3sec */
     fifo8_init(&timerfifo1, TIMER_BUFSIZE, timerbuf1);
     timer1 = timer_alloc();
@@ -112,12 +112,12 @@ void HariMain(void) {
     layer_setheight(lyr_mouse, 2);
     
     /* Information Display */
-    sprintf(string, "screen = %d x %d", binfo->scrnx, binfo->scrny);
-    putstr8_asc(buf_back, binfo->scrnx, 6, 44, COLOUR_WHITE, string);
+    sprintf(string, "screen = %3d x %3d", binfo->scrnx, binfo->scrny);
+    putstr8_asc_lyr(lyr_back, 6, 44, COLOUR_WHITE, COLOUR_DCYAN, string, 18);
     sprintf(string, "memory = %dKB", memtotal / 1024);
-    putstr8_asc(buf_back, binfo->scrnx, 6, 64, COLOUR_WHITE, string);
+    putstr8_asc_lyr(lyr_back, 6, 64, COLOUR_WHITE, COLOUR_DCYAN, string, 18);
     sprintf(string, " free  = %dKB", memfree / 1024);
-    putstr8_asc(buf_back, binfo->scrnx, 6, 84, COLOUR_WHITE, string);
+    putstr8_asc_lyr(lyr_back, 6, 84, COLOUR_WHITE, COLOUR_DCYAN, string, 18);
 
     /* Refresh Screen */
     layerctl_refresh(lyr_back, 0, 0, binfo->scrnx, binfo->scrny);
@@ -131,7 +131,7 @@ void HariMain(void) {
         /* Disable Interrupt */
         io_cli();
         if (fifo8_status(&keyfifo) + fifo8_status(&moufifo) + 
-                fifo8_status(&timerfifo0) + fifo8_status(&timerfifo1) + fifo8_status(&timerfifo2) == 0) {
+                fifo8_status(&timerfifo) + fifo8_status(&timerfifo1) + fifo8_status(&timerfifo2) == 0) {
             io_sti(); /* Enable Interrupt and halt - no interrupt */
         } else {
             if (fifo8_status(&keyfifo) != 0) {
@@ -181,8 +181,8 @@ void HariMain(void) {
                     layerctl_refresh(lyr_back, 200, 40, 300, 58);
                     layer_slide(lyr_mouse, mx, my);
                 }
-            } else if (fifo8_status(&timerfifo0) != 0) {
-                i = fifo8_get(&timerfifo0);
+            } else if (fifo8_status(&timerfifo) != 0) {
+                i = fifo8_get(&timerfifo);
                 io_sti();
                 putstr8_asc(buf_back, binfo->scrnx, 0, 104, COLOUR_WHITE, "10[sec]");
                 layerctl_refresh(lyr_back, 0, 104, 56, 120);
