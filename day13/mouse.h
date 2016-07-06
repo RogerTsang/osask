@@ -19,7 +19,7 @@ struct _mousedec {
 };
 
 void inthandler2c(int *esp);
-void enable_mouse(struct _mousedec *mdec);
+void enable_mouse(struct _fifo32 *fifo, int data0, struct _mousedec *mdec);
 int mouse_decode(struct _mousedec *mdec, unsigned char dat);
 
 #endif

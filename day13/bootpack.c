@@ -11,27 +11,24 @@
 #include "window.h"
 #include "timer.h"
 
-extern struct _fifo8 keyfifo;
-extern char keybuf[KB_BUFSIZE];
-extern struct _fifo8 moufifo;
-extern char moubuf[MO_BUFSIZE];
-extern struct _mousedec mdec;
 extern struct _timerctl timerctl;
 
 void HariMain(void) {
+    /* FIFO buffer */
+    struct _fifo32 fifo;
+    int fifobuf[FIFO_BUFSIZE];
     /* Fetch video info from asmhead */
     struct _bootinfo * binfo = (struct _bootinfo *) ADR_BOOTINFO;
-    int i, mx, my;
+    int i, mx, my, bmtimer = 0;
     char string[32];
     /* Timer */
-    struct _fifo8 timerfifo, timerfifo1, timerfifo2;
-    char timerbuf[TIMER_BUFSIZE], timerbuf1[TIMER_BUFSIZE], timerbuf2[TIMER_BUFSIZE];
     struct _timer *timer, *timer1, *timer2;
     /* Layer */
     struct _layerctl *lyrctl;
     struct _layer *lyr_back, *lyr_mouse, *lyr_win;
     unsigned char *buf_back, buf_mouse[MOU_SIZE * MOU_SIZE], *buf_win;
-
+    /* Mouse */
+    struct _mousedec mdec;
     /* Memory info */
     unsigned int memtotal, memfree;
     struct _memman *memman = (struct _memman *) MEMMAN_ADDR;
@@ -41,20 +38,21 @@ void HariMain(void) {
 
     /* Init Programable Interval Timer */
     init_pit();
+
+    /* Init FIFO buffer */
+    fifo32_init(&fifo, FIFO_BUFSIZE, fifobuf);
+
     /* Timer 0 10sec */
-    fifo8_init(&timerfifo, TIMER_BUFSIZE, timerbuf);
     timer = timer_alloc();
-    timer_init(timer, &timerfifo, 1);
+    timer_init(timer, &fifo, TDATA_10SEC);
     timer_settime(timer, 1000);
     /* Timer 1 3sec */
-    fifo8_init(&timerfifo1, TIMER_BUFSIZE, timerbuf1);
     timer1 = timer_alloc();
-    timer_init(timer1, &timerfifo1, 1);
+    timer_init(timer1, &fifo, TDATA_3SEC);
     timer_settime(timer1, 300);
     /* Timer 2 cursor */
-    fifo8_init(&timerfifo2, TIMER_BUFSIZE, timerbuf2);
     timer2 = timer_alloc();
-    timer_init(timer2, &timerfifo2, 1);
+    timer_init(timer2, &fifo, TDATA_CURSOR_L);
     timer_settime(timer2, 50);
 
     /* Init Interrupt Programable Controller */
@@ -66,8 +64,8 @@ void HariMain(void) {
     io_out8(PIC1_IMR, 0xef);
 
     /* Init Keyboard and Mouse */
-    init_keyboard();
-    enable_mouse(&mdec);
+    init_keyboard(&fifo, FIFO_KEYBOARD_L);
+    enable_mouse(&fifo, FIFO_MOUSE_L, &mdec);
 
     /* Memory Check */
     memtotal = memtest(0x00400000, 0xbfffffff); /* 3GB */
@@ -97,7 +95,7 @@ void HariMain(void) {
     init_mouse_cursor8(buf_mouse, COLOUR_INVIS);
 
     /* Windows */
-    make_window8(buf_win, 160, 68, "counter");
+    make_window8(buf_win, 160, 68, "Benchmark");
 
     /* Mouse Positioning and drawing */
     mx = (binfo->scrnx - MOU_SIZE * 2) / 2;
@@ -123,29 +121,46 @@ void HariMain(void) {
     layerctl_refresh(lyr_back, 0, 0, binfo->scrnx, binfo->scrny);
 
     while (1) {
-        /* Window Counter */
-        sprintf(string, "%10d", timerctl.count);
-        putstr8_asc_lyr(lyr_win, 40, 28, COLOUR_BLACK, COLOUR_GREY, string, 10);
+        /* Benchmark Timer */
+        bmtimer++;
         /* Disable Interrupt */
         io_cli();
-        if (fifo8_status(&keyfifo) + fifo8_status(&moufifo) + 
-                fifo8_status(&timerfifo) + fifo8_status(&timerfifo1) + fifo8_status(&timerfifo2) == 0) {
+        if (fifo32_status(&fifo) == 0) {
             io_sti(); /* Enable Interrupt and halt - no interrupt */
         } else {
-            if (fifo8_status(&keyfifo) != 0) {
-                /* Read key from buffer */
-                i = fifo8_get(&keyfifo);
-                /* Re-enable Interrupt - handling interrupt buf*/
-                io_sti();
+            /* Read data from fifo buffer */
+            i = fifo32_get(&fifo);
+            /* Re-enable Interrupt */
+            io_sti();
+            /* Interrupt Dispatch */
+            if (FIFO_TIMER_L <= i && i <= FIFO_TIMER_H) {
+                if (i == TDATA_10SEC) {
+                    sprintf(string, "10[sec]", mx, my);
+                    putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
+                    sprintf(string, "%10d", bmtimer);
+                    putstr8_asc_lyr(lyr_win, 40, 28, COLOUR_BLACK, COLOUR_GREY, string, 10);
+                } else if (i == TDATA_3SEC) {
+                    sprintf(string, "3[sec]", mx, my);
+                    putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
+                    bmtimer = 0;
+                } else if (i == TDATA_CURSOR_L) {
+                    /* Change the next data to TDATA_CURSOR_HIGH */
+                    timer_init(timer2, &fifo, TDATA_CURSOR_H);
+                    timer_settime(timer2, 50);
+                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 8, 136, 15, 151);
+                    layerctl_refresh(lyr_back, 8, 136, 16, 152);
+                } else if (i == TDATA_CURSOR_H) {
+                    /* Change the next data to TDATA_CURSOR_HIGH */
+                    timer_init(timer2, &fifo, TDATA_CURSOR_L);
+                    timer_settime(timer2, 50);
+                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_WHITE, 8, 136, 15, 151);
+                    layerctl_refresh(lyr_back, 8, 136, 16, 152);
+                }
+            } else if (FIFO_KEYBOARD_L <= i && i <= FIFO_KEYBOARD_H) {
                 /* Keyboard Info */
-                sprintf(string, "%02x", i);
+                sprintf(string, "%02x", i - FIFO_KEYBOARD_L);
                 putstr8_asc_lyr(lyr_back, 200, 0, COLOUR_WHITE, COLOUR_DCYAN, string, 2);
-            } else if (fifo8_status(&moufifo) != 0) {
-                /* Read mouse from buffer */
-                i = fifo8_get(&moufifo);
-                /* Re-enable Interrupt - handling interrupt buf*/
-                io_sti(); 
-
+            } else if (FIFO_MOUSE_L <= i && i <= FIFO_MOUSE_H) {
                 /* Decode Mouse */
                 if (mouse_decode(&mdec, i) == 3) {
                     /* Print Out LCR status */
@@ -172,28 +187,6 @@ void HariMain(void) {
                     putstr8_asc_lyr(lyr_back, 200, 40, COLOUR_WHITE, COLOUR_DCYAN, string, 9);
                     layer_slide(lyr_mouse, mx, my);
                 }
-            } else if (fifo8_status(&timerfifo) != 0) {
-                i = fifo8_get(&timerfifo);
-                io_sti();
-                sprintf(string, "10[sec]", mx, my);
-                putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
-            } else if (fifo8_status(&timerfifo1) != 0) {
-                i = fifo8_get(&timerfifo1);
-                io_sti();
-                sprintf(string, "3[sec]", mx, my);
-                putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
-            } else if (fifo8_status(&timerfifo2) != 0) {
-                i = fifo8_get(&timerfifo2);
-                io_sti();
-                if (i != 0) {
-                    timer_init(timer2, &timerfifo2, 0);
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_WHITE, 8, 136, 15, 151);
-                } else {
-                    timer_init(timer2, &timerfifo2, 1);
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 8, 136, 15, 151);
-                }
-                timer_settime(timer2, 50);
-                layerctl_refresh(lyr_back, 8, 136, 16, 152);
             }
         }
     }

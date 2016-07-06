@@ -6,6 +6,15 @@
 #define EFLAGS_AC_BIT   0x00040000 /* Used for testing i486 */
 #define CR0_CACHE_DISABLE 0x60000000
 
+#define FIFO_TIMER_L 0
+#define FIFO_TIMER_H 255
+#define FIFO_KEYBOARD_L 256
+#define FIFO_KEYBOARD_H 511
+#define FIFO_MOUSE_L 512
+#define FIFO_MOUSE_H 767
+
+#define FIFO_BUFSIZE 128
+
 /* Low Level Operations */
 void io_hlt(void);
 void io_cli(void);

@@ -3,7 +3,7 @@
 #include "bootpack.h"
 
 struct _timerctl timerctl;
-struct _fifo8 timerfifo;
+struct _fifo32 timerfifo;
 
 void init_pit(void) {
     int i;
@@ -38,7 +38,7 @@ void timer_free(struct _timer *timer) {
     return;
 }
 
-void timer_init(struct _timer *timer, struct _fifo8 *fifo, unsigned char data) {
+void timer_init(struct _timer *timer, struct _fifo32 *fifo, unsigned char data) {
     timer->fifo = fifo;
     timer->data = data;
     return;
@@ -84,7 +84,7 @@ void inthandler20(int *esp) {
             break; /* Interleave if timeout is met */
         }
         timerctl.timers[i]->flags = TIMER_FLAGS_ALLOC;
-        fifo8_put(timerctl.timers[i]->fifo, timerctl.timers[i]->data);
+        fifo32_put(timerctl.timers[i]->fifo, timerctl.timers[i]->data);
     }
     /* Shift out timeouted timer */
     timerctl.using -= i;

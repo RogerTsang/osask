@@ -2,32 +2,32 @@
 #include "keyboard.h"
 #include "bootpack.h"
 
-/* Buffer */
-struct _fifo8 moufifo;
-char moubuf[MO_BUFSIZE];
-struct _mousedec mdec;
+/* Buffer now shared with others */
+struct _fifo32 *moufifo;
+unsigned int mousedata0;
 
 /* Mouse Interrupt */
 void inthandler2c(int *esp) {
-    unsigned char data;
+    unsigned int data;
     /* Indicates PIC1 IRQ-12 is handled */
     io_out8(PIC1_OCW2, 0x64);
     /* Indicates PIC0 IRQ-2  is handled */
     io_out8(PIC0_OCW2, 0x62);
     /* Write data to buffer (same port as KB) */
     data = io_in8(PORT_KEYDAT);
-    fifo8_put(&moufifo, data);
+    fifo32_put(moufifo, data + mousedata0);
     return;
 }
 
-void enable_mouse(struct _mousedec *mdec) {
-    /* Init Mouse Buffer */
-    fifo8_init(&moufifo, MO_BUFSIZE, moubuf);
-    wait_KBC_sendready();
+void enable_mouse(struct _fifo32 *fifo, int data0, struct _mousedec *mdec) {
+    /* FIFO now is global variable (bootpack.c) */
+    moufifo = fifo;
+    mousedata0 = data0;
     /* Indicate KBC to propagate next instruction to mouse */
-    io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
     wait_KBC_sendready();
+    io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
     /* Mouse CMD: Enable mouse */
+    wait_KBC_sendready();
     io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
     /* Set phase to 0 */
     mdec->phase = 0;

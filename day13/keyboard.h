@@ -15,6 +15,6 @@
 
 void wait_KBC_sendready(void);
 void inthandler21(int *esp);
-void init_keyboard(void);
+void init_keyboard(struct _fifo32 *fifo, int data0);
 
 #endif
