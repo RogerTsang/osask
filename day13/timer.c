@@ -7,18 +7,24 @@ struct _fifo32 timerfifo;
 
 void init_pit(void) {
     int i;
+    struct _timer *scout;
     /* Enable PIT */
     io_out8(PIT_CTRL, 0x34);
     /* Set timer interval 0x2e9c = 11932 cycles/irq */
     io_out8(PIT_CNT0, 0x9c);
     io_out8(PIT_CNT0, 0x2e);
     /* Initialise Timer */
-    timerctl.count = 0;
-    timerctl.nextto = 0xffffffff;
-    timerctl.using = 0;
     for (i = 0; i < MAX_TIMER; i++) {
         timerctl.timers0[i].flags = TIMER_FLAGS_UNUSED;
     }
+    /* Initialise scout (always stands at the end) */
+    scout = timer_alloc();
+    scout->timeout = 0xffffffff;
+    scout->flags = TIMER_FLAGS_USING;
+    scout->next = 0;
+    /* Initialise Timer Controller Variables */
+    timerctl.count = 0;
+    timerctl.nextto = 0xffffffff;
     return;
 }
 
@@ -53,9 +59,10 @@ void timer_settime(struct _timer *timer, unsigned int timeout) {
     timer->flags = TIMER_FLAGS_USING;
     e = io_load_eflags();
     io_cli();
-    timerctl.using++;
     /* Find *timer slot */
-    /* The only one */
+    t = timerctl.timersHead;
+    /* The only one (abandoned) */
+    /*
     if (timerctl.using == 1) { 
         timerctl.timersHead = timer;
         timer->next = 0;
@@ -63,8 +70,8 @@ void timer_settime(struct _timer *timer, unsigned int timeout) {
         io_store_eflags(e);
         return;
     }
+    */
     /* Insert at the beginning */
-    t = timerctl.timersHead;
     if (timer->timeout <= t->timeout) {
         timerctl.timersHead = timer;
         timer->next = t;
@@ -85,15 +92,16 @@ void timer_settime(struct _timer *timer, unsigned int timeout) {
             return;
         }
     }
-    /* Insert at the end */
+    /* Insert at the end (abandoned) */
+    /*
     s->next = timer;
     timer->next = 0;
     io_store_eflags(e);
     return;
+    */
 }
 
 void inthandler20(int *esp) {
-    int i;
     struct _timer *curr;
     /* Indicates PIC that IRQ0 is handled */
     io_out8(PIC0_OCW2, 0x60);
@@ -104,7 +112,7 @@ void inthandler20(int *esp) {
     }
     curr = timerctl.timersHead;
     /* Traverse timer in "using" array */
-    for (i = 0; i < timerctl.using; i++) {
+    while (1) {
         if (curr->timeout > timerctl.count) {
             break; /* Interleave if timeout does not meet */
         }
@@ -114,14 +122,9 @@ void inthandler20(int *esp) {
         curr = curr->next;
     }
     /* Shift out timeouted timer */
-    timerctl.using -= i;
     timerctl.timersHead = curr;
     /* Mark the first timeout in the queue as next */
-    if (timerctl.using > 0) {
-        timerctl.nextto = timerctl.timersHead->timeout;
-    } else {
-        timerctl.nextto = 0xffffffff;
-    }
+    timerctl.nextto = timerctl.timersHead->timeout;
     return;
 }
 

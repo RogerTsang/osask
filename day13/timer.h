@@ -35,7 +35,7 @@ struct _timerctl {
     /* Nearest furture timeout */
     unsigned int nextto;
     /* Number of timer in the queue */
-    unsigned int using;
+    /* unsigned int using; */
     struct _timer *timersHead;
     struct _timer timers0[MAX_TIMER];
 };
