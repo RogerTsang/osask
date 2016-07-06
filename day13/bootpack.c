@@ -125,9 +125,7 @@ void HariMain(void) {
     while (1) {
         /* Window Counter */
         sprintf(string, "%10d", timerctl.count);
-        draw_retangle8(buf_win, 160, COLOUR_GREY, 40, 28, 119, 43);
-        putstr8_asc(buf_win, 160, 40, 28, COLOUR_BLACK, string);
-        layerctl_refresh(lyr_win, 40, 28, 120, 44);
+        putstr8_asc_lyr(lyr_win, 40, 28, COLOUR_BLACK, COLOUR_GREY, string, 10);
         /* Disable Interrupt */
         io_cli();
         if (fifo8_status(&keyfifo) + fifo8_status(&moufifo) + 
@@ -141,10 +139,7 @@ void HariMain(void) {
                 io_sti();
                 /* Keyboard Info */
                 sprintf(string, "%02x", i);
-                draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 0, 216, 18);
-                putstr8_asc(buf_back, binfo->scrnx, 200, 0, COLOUR_WHITE, string);
-                /* Refresh Screen */
-                layerctl_refresh(lyr_back, 200, 0, 216, 18);
+                putstr8_asc_lyr(lyr_back, 200, 0, COLOUR_WHITE, COLOUR_DCYAN, string, 2);
             } else if (fifo8_status(&moufifo) != 0) {
                 /* Read mouse from buffer */
                 i = fifo8_get(&moufifo);
@@ -164,9 +159,7 @@ void HariMain(void) {
                     if ((mdec.btn & 0x04) != 0) {
                         string[1] = 'C';
                     }
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 20, 300, 38);
-                    putstr8_asc(buf_back, binfo->scrnx, 200, 20, COLOUR_WHITE, string);
-                    layerctl_refresh(lyr_back, 200, 20, 300, 38);
+                    putstr8_asc_lyr(lyr_back, 200, 20, COLOUR_WHITE, COLOUR_DCYAN, string, 11);
                     /* Position Mouse */
                     mx += mdec.x;
                     my += mdec.y;
@@ -176,21 +169,19 @@ void HariMain(void) {
                     if (my > binfo->scrny - 1) my = binfo->scrny - 1;
                     /* Display Mouse */
                     sprintf(string, "(%3d %3d)", mx, my);
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 200, 40, 300, 58);
-                    putstr8_asc(buf_back, binfo->scrnx, 200, 40, COLOUR_WHITE, string);
-                    layerctl_refresh(lyr_back, 200, 40, 300, 58);
+                    putstr8_asc_lyr(lyr_back, 200, 40, COLOUR_WHITE, COLOUR_DCYAN, string, 9);
                     layer_slide(lyr_mouse, mx, my);
                 }
             } else if (fifo8_status(&timerfifo) != 0) {
                 i = fifo8_get(&timerfifo);
                 io_sti();
-                putstr8_asc(buf_back, binfo->scrnx, 0, 104, COLOUR_WHITE, "10[sec]");
-                layerctl_refresh(lyr_back, 0, 104, 56, 120);
+                sprintf(string, "10[sec]", mx, my);
+                putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
             } else if (fifo8_status(&timerfifo1) != 0) {
                 i = fifo8_get(&timerfifo1);
                 io_sti();
-                putstr8_asc(buf_back, binfo->scrnx, 0, 120, COLOUR_WHITE, "3[sec]");
-                layerctl_refresh(lyr_back, 0, 120, 48, 136);
+                sprintf(string, "3[sec]", mx, my);
+                putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
             } else if (fifo8_status(&timerfifo2) != 0) {
                 i = fifo8_get(&timerfifo2);
                 io_sti();
