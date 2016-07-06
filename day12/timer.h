@@ -14,7 +14,6 @@
 #define MAX_TIMER 500
 
 struct _timer {
-    /* Each Timer has different interval */
     unsigned int timeout;
     unsigned int flags;
     /* Each Timer has its own queue */
@@ -25,8 +24,9 @@ struct _timer {
 
 struct _timerctl {
     /* Current Time */
-    unsigned int count;
-    struct _timer timer[MAX_TIMER];
+    unsigned int count, next, using;
+    struct _timer *timers[MAX_TIMER];
+    struct _timer timers0[MAX_TIMER];
 };
 
 void init_pit(void);
