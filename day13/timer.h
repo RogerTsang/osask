@@ -19,6 +19,8 @@
 #define MAX_TIMER 500
 
 struct _timer {
+    /* Use LinkedList to store next deadline */
+    struct _timer *next;
     unsigned int timeout;
     unsigned int flags;
     /* Each Timer has its own queue */
@@ -29,8 +31,12 @@ struct _timer {
 
 struct _timerctl {
     /* Current Time */
-    unsigned int count, next, using;
-    struct _timer *timers[MAX_TIMER];
+    unsigned int count;
+    /* Nearest furture timeout */
+    unsigned int nextto;
+    /* Number of timer in the queue */
+    unsigned int using;
+    struct _timer *timersHead;
     struct _timer timers0[MAX_TIMER];
 };
 
