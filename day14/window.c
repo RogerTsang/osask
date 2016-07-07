@@ -1,8 +1,8 @@
 #include "window.h"
-#include "graphic.h"
 
-void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
+void make_window8(struct _layer *lyr, int xsize, int ysize, char *title)
 {
+    unsigned char *buf = lyr->buf;
 	static char closebtn[14][16] = {
 		"OOOOOOOOOOOOOOO@",
 		"OQQQQQQQQQQQQQ$@",
@@ -47,5 +47,19 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title)
 			buf[(5 + y) * xsize + (xsize - 21 + x)] = c;
 		}
 	}
+	return;
+}
+
+void make_textbox8(struct _layer *lyr, int x0, int y0, int sx, int sy, int c) {
+	int x1 = x0 + sx, y1 = y0 + sy;
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_DGREY, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_DGREY, x0 - 3, y0 - 3, x0 - 3, y1 + 1);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_WHITE, x0 - 3, y1 + 2, x1 + 1, y1 + 2);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_WHITE, x1 + 2, y0 - 3, x1 + 2, y1 + 2);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_BLACK, x0 - 1, y0 - 2, x1 + 0, y0 - 2);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_BLACK, x0 - 2, y0 - 2, x0 - 2, y1 + 0);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_GREY, x0 - 2, y1 + 1, x1 + 0, y1 + 1);
+	draw_retangle8(lyr->buf, lyr->bxsize, COLOUR_GREY, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
+	draw_retangle8(lyr->buf, lyr->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
 	return;
 }

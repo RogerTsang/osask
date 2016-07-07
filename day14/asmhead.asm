@@ -3,10 +3,17 @@
 
 [INSTRSET "i486p"] ; Enable 'LGDT' 'EAX' 'CR0' keywords
 
-VBEMODE EQU 0x105  ; VESA BIOS Ext. 1024x768
 BOTPAK  EQU 0x00280000
 DSKCAC  EQU 0x00100000
 DSKCAC0 EQU 0x00008000
+
+; VESA BIOS display mode
+VBEMODE EQU 0x101  ; VESA BIOS Ext. 640x480x8
+;	0x100 :  640 x  400 x 8bit
+;	0x101 :  640 x  480 x 8bit
+;	0x103 :  800 x  600 x 8bit
+;	0x105 : 1024 x  768 x 8bit
+;	0x107 : 1280 x 1024 x 8bit
 
 ; Boot info
 CYLS    EQU 0x0ff0 ; cylinder number

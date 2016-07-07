@@ -11,6 +11,22 @@
 #include "window.h"
 #include "timer.h"
 
+/* Keytable */
+static char keytable[KB_NUMCHAR] = {
+      0,   0, '1', '2', '3', '4', '5', '6', 
+    '7', '8', '9', '0', '-', '=',   0,   0,
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I',
+    'O', 'P', '[', ']',   0,   0, 'A', 'S',
+    'D', 'F', 'G', 'H', 'J', 'K', 'L', ';',
+   '\'',   0,   0,'\\', 'Z', 'X', 'C', 'V',
+    'B', 'N', 'M', ',', '.', '/',   0, '*',
+      0, ' ',   0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0,   0, '7', 
+    '8', '9', '-', '4', '5', '6', '+', '1',
+    '2', '3', '0', '.'
+};
+
+
 extern struct _timerctl timerctl;
 
 void HariMain(void) {
@@ -24,6 +40,7 @@ void HariMain(void) {
     /* Timer */
     struct _timer *timer, *timer1, *timer2;
     /* Layer */
+    int cursor_x = 8, cursor_c = COLOUR_WHITE;
     struct _layerctl *lyrctl;
     struct _layer *lyr_back, *lyr_mouse, *lyr_win;
     unsigned char *buf_back, buf_mouse[MOU_SIZE * MOU_SIZE], *buf_win;
@@ -95,7 +112,9 @@ void HariMain(void) {
     init_mouse_cursor8(buf_mouse, COLOUR_INVIS);
 
     /* Windows */
-    make_window8(buf_win, 160, 68, "Benchmark");
+    make_window8(lyr_win, 160, 68, "Benchmark");
+    make_textbox8(lyr_win, 8, 28, 144, 16, COLOUR_WHITE);
+    cursor_c = COLOUR_BLACK;
 
     /* Mouse Positioning and drawing */
     mx = (binfo->scrnx - MOU_SIZE * 2) / 2;
@@ -122,11 +141,11 @@ void HariMain(void) {
 
     while (1) {
         /* Benchmark Timer */
-        bmtimer++;
+        //bmtimer++;
         /* Disable Interrupt */
         io_cli();
         if (fifo32_status(&fifo) == 0) {
-            io_sti(); /* Enable Interrupt and halt - no interrupt */
+            io_stihlt(); /* Enable Interrupt and halt - no interrupt */
         } else {
             /* Read data from fifo buffer */
             i = fifo32_get(&fifo);
@@ -138,7 +157,7 @@ void HariMain(void) {
                     sprintf(string, "10[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
                     sprintf(string, "%10d", bmtimer);
-                    putstr8_asc_lyr(lyr_win, 40, 28, COLOUR_BLACK, COLOUR_GREY, string, 10);
+                    //putstr8_asc_lyr(lyr_win, 40, 28, COLOUR_BLACK, COLOUR_GREY, string, 10);
                 } else if (i == TDATA_3SEC) {
                     sprintf(string, "3[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
@@ -160,6 +179,22 @@ void HariMain(void) {
                 /* Keyboard Info */
                 sprintf(string, "%02x", i - FIFO_KEYBOARD_L);
                 putstr8_asc_lyr(lyr_back, 200, 0, COLOUR_WHITE, COLOUR_DCYAN, string, 2);
+                /* Character */
+                if (i < FIFO_KEYBOARD_L + KB_NUMCHAR) {
+                    if (keytable[i - FIFO_KEYBOARD_L] != 0 && cursor_x < 144) {
+                        string[0] = keytable[i - FIFO_KEYBOARD_L];
+                        string[1] = '\0';
+                        putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_BLACK, COLOUR_WHITE, string, 1);
+                        cursor_x += 8;
+                    }
+                }
+                /* BackSpace */
+                if (i == FIFO_KEYBOARD_L + 0x0e && cursor_x > 8) {
+                    putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_WHITE, COLOUR_WHITE, " ", 1);
+                    cursor_x -= 8;
+                }
+                draw_retangle8(lyr_win->buf, lyr_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+                layerctl_refresh(lyr_win, cursor_x, 28, cursor_x + 8, 44);
             } else if (FIFO_MOUSE_L <= i && i <= FIFO_MOUSE_H) {
                 /* Decode Mouse */
                 if (mouse_decode(&mdec, i) == 3) {
@@ -167,6 +202,8 @@ void HariMain(void) {
                     sprintf(string, "lcr%4d%4d", mdec.x, mdec.y);
                     if ((mdec.btn & 0x01) != 0) {
                         string[0] = 'L';
+                        /* Move Window */
+                        layer_slide(lyr_win, mx - 80, my - 8);
                     }
                     if ((mdec.btn & 0x02) != 0) {
                         string[2] = 'R';

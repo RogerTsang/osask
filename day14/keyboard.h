@@ -13,6 +13,7 @@
 #include "fifo.h"
 #include "int.h"
 
+
 void wait_KBC_sendready(void);
 void inthandler21(int *esp);
 void init_keyboard(struct _fifo32 *fifo, int data0);

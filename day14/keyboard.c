@@ -1,6 +1,7 @@
 #include "keyboard.h"
 #include "bootpack.h"
 
+
 /* Keyboard Buffer now shared with other facilities */
 struct _fifo32 *keyfifo;
 unsigned int keydata0;
@@ -35,6 +36,7 @@ void inthandler21(int *esp) {
 }
 
 void init_keyboard(struct _fifo32 *fifo, int data0) {
+    /* Bind fifo buffer and data0 offset value */
     keyfifo = fifo;
     keydata0 = data0;
     /* Init Keyboard Buffer */

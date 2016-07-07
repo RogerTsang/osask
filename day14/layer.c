@@ -202,7 +202,7 @@ void layerctl_refreshmap(struct _layerctl *ctl, int vx0, int vy0, int vx1, int v
     /* Refresh Layer Above or Equal h0 */
     for (h = h0; h <= ctl->top; h++) {
         lyr = ctl->layers[h];
-        /* Height = CurLevel - 0Level */
+        /* Height = CurLevel_addr - 0Level_addr */
         sid = lyr - ctl->layers0;
         buf = lyr->buf;
         /* Calculate Refresh Region */

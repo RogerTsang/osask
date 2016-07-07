@@ -14,6 +14,7 @@
 #define FIFO_MOUSE_H 767
 
 #define FIFO_BUFSIZE 128
+#define KB_NUMCHAR    84
 
 /* Low Level Operations */
 void io_hlt(void);

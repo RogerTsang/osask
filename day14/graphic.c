@@ -160,8 +160,8 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
 }
 
 void putstr8_asc_lyr(struct _layer *lyr, int x, int y, int c, int b, char *s, int l) {
-    draw_retangle8(lyr->buf, lyr->bxsize, b, x, y, x + l * 8 - 1, y + 15);
+    draw_retangle8(lyr->buf, lyr->bxsize, b, x, y, x + l * 8, y + 16);
     putstr8_asc(lyr->buf, lyr->bxsize, x, y, c, s);
-    layerctl_refresh(lyr, x, y, x + l * 8 - 1, y + 16);
+    layerctl_refresh(lyr, x, y, x + l * 8, y + 16);
     return;
 }
