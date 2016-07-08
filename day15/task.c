@@ -3,6 +3,7 @@
 #include "bootpack.h"
 #include "fifo.h"
 #include "timer.h"
+#include "dsctbl.h"
 
 struct _tss32 tss_a, tss_b;
 extern struct _memman *memman;
@@ -10,6 +11,9 @@ extern struct _memman *memman;
 /* MultiTask-Timer */
 struct _timer *mt_timer;
 int mt_tr;
+
+struct _taskctl *taskctl;
+struct _timer *task_timer;
 
 void init_mt(void) {
     mt_timer = timer_alloc();

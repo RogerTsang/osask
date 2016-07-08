@@ -10,10 +10,12 @@
 #define TIMER_FLAGS_ALLOC 1
 #define TIMER_FLAGS_USING 2
 
-#define TDATA_TS 2
-#define TDATA_PUT 100
+#define TDATA_PUT   100
 #define TDATA_10SEC 10
 #define TDATA_3SEC  3
+#define TDATA_TS    2
+#define TDATA_1SEC  1
+
 #define TDATA_CURSOR_H 1
 #define TDATA_CURSOR_L 0
 #define TIMER_TS 2 /* Task switch in 10ms */
