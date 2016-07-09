@@ -1,6 +1,7 @@
 #ifndef TASK_H
 #define TASK_H
 
+#include "fifo.h"
 #include "memory.h"
 
 #define TASK_RUNNING 2
@@ -11,6 +12,8 @@
 #define MAX_TASKPLV 8
 #define MAX_TASKLEVELS 5
 #define TASK_GDT0 3
+
+#define TASK_MEMORY 4096
 
 struct _tss32 /* task status segment */ {
     /* Task Info */
@@ -26,6 +29,7 @@ struct _tss32 /* task status segment */ {
 struct _task {
     int sel, flags;
     int level, priority;
+    struct _fifo32 fifo;
     struct _tss32 tss;
 };
 

@@ -58,8 +58,6 @@ struct _task *task_alloc(void) {
     for (i = 0; i < MAX_TASKS; i++) {
         if (taskctl->tasks0[i].flags == TASK_UNUSED) {
             task = &(taskctl->tasks0[i]);
-            task->flags = TASK_READY;
-            task->priority = 2;
             task->tss.eflags = 0x00000202; /* Turn on interrupt */
             task->tss.eax = 0;
             task->tss.ecx = 0;
@@ -74,6 +72,8 @@ struct _task *task_alloc(void) {
             task->tss.gs  = 0;
             task->tss.ldtr = 0;
             task->tss.iomap = 0x40000000;
+            task->flags = TASK_READY;
+            task->priority = 2;
             break;
         }
     }

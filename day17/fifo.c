@@ -1,4 +1,5 @@
 #include "fifo.h"
+#include "task.h"
 
 void fifo8_init(struct _fifo8 *fifo, int size, unsigned char *buf) {
     fifo->size = size;
@@ -68,6 +69,7 @@ int  fifo32_put(struct _fifo32 *fifo, unsigned int data) {
         /* Wake up ready thread */
         if (fifo->task->flags != TASK_RUNNING) {
             /* Don't change its priority and level */
+            /* Attempt to wake up fifo->task */
             task_run(fifo->task, -1, 0);
         }
     }

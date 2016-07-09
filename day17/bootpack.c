@@ -39,14 +39,15 @@ void HariMain(void) {
     int i, mx, my, bmtimer = 0;
     char string[32];
     /* Timer */
-    struct _timer *timer, *timer1, *timer2;
+    struct _timer *timer, *timer1;
     /* Layer */
     int cursor_x, cursor_c;
     struct _layerctl *lyrctl;
-    struct _layer *lyr_back, *lyr_mouse, *lyr_win, *lyr_win_b[3];
-    unsigned char *buf_back, buf_mouse[MOU_SIZE * MOU_SIZE], *buf_win, *buf_win_b;
+    struct _layer *lyr_back, *lyr_mouse, *lyr_win, *lyr_cons;
+    unsigned char *buf_back, *buf_mouse, *buf_win, *buf_cons;
     /* Task */
-    struct _task *task_a, *task_b[3];
+    struct _task *task_a, *task_cons;
+    int key_to = 0 /* Switch Task ID */;
     /* Mouse */
     struct _mousedec mdec;
     /* Memory info */
@@ -63,16 +64,12 @@ void HariMain(void) {
 
     /* Timer 0 10sec */
     timer = timer_alloc();
-    timer_init(timer, &fifo, TDATA_10SEC);
+    timer_init(timer, &fifo, FIFO_10SEC);
     timer_settime(timer, 1000);
     /* Timer 1 3sec */
     timer1 = timer_alloc();
-    timer_init(timer1, &fifo, TDATA_3SEC);
+    timer_init(timer1, &fifo, FIFO_3SEC);
     timer_settime(timer1, 300);
-    /* Timer 2 cursor */
-    timer2 = timer_alloc();
-    timer_init(timer2, &fifo, TDATA_CURSOR_L);
-    timer_settime(timer2, 50);
 
     /* Init Interrupt Programable Controller */
     init_pic();
@@ -96,7 +93,7 @@ void HariMain(void) {
     /* Palette Setting */
     init_palette();
 
-    /* Init Task */
+    /* Init Task Mouse & Keyboard*/
     task_a = task_init(memman);
     fifo.task = task_a;
     task_run(task_a, 1, 0);
@@ -106,64 +103,57 @@ void HariMain(void) {
     lyr_back = layer_alloc(lyrctl);
     lyr_mouse = layer_alloc(lyrctl);
     lyr_win = layer_alloc(lyrctl);
+    lyr_cons = layer_alloc(lyrctl);
 
     /* Allocate Buf Memory */
+    buf_mouse = (unsigned char *) memman_alloc_4k(memman, MOU_SIZE * MOU_SIZE);
     buf_back = (unsigned char *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
     buf_win  = (unsigned char *) memman_alloc_4k(memman, 160 * 68);
+    buf_cons  = (unsigned char *) memman_alloc_4k(memman, 256 * 165);
     layer_setbuf(lyr_back, buf_back, binfo->scrnx, binfo->scrny, COLOUR_NULL);
     layer_setbuf(lyr_mouse, buf_mouse, MOU_SIZE, MOU_SIZE, COLOUR_INVIS);
     layer_setbuf(lyr_win, buf_win, 160, 68, COLOUR_NULL);
+    layer_setbuf(lyr_cons, buf_cons, 256, 165, COLOUR_NULL);
 
     /* Init Screen */
     init_screen(buf_back, binfo->scrnx, binfo->scrny);
-    init_mouse_cursor8(buf_mouse, COLOUR_INVIS);
 
-    /* Init all other task */
-    for (i = 0; i < 3; i++) {
-        /* Layers */
-        lyr_win_b[i] = layer_alloc(lyrctl);
-        buf_win_b = (unsigned char *) memman_alloc_4k(memman, 144 * 52);
-        layer_setbuf(lyr_win_b[i], buf_win_b, 144, 52, COLOUR_NULL);
-        /* Windows */
-        sprintf(string, "task_b%d", i);
-        make_window8(lyr_win_b[i], 144, 52, string, 0);
-        /* Task */
-        task_b[i] = task_alloc();
-        task_b[i]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
-        task_b[i]->tss.eip = (int) &task_b_main; /* Run the same code */
-        task_b[i]->tss.es = 1 * 8;
-        task_b[i]->tss.cs = 2 * 8;
-        task_b[i]->tss.ss = 1 * 8;
-        task_b[i]->tss.ds = 1 * 8;
-        task_b[i]->tss.fs = 1 * 8;
-        task_b[i]->tss.gs = 1 * 8;
-        *((int *) (task_b[i]->tss.esp + 4)) = (int) lyr_win_b[i]; /* Arg0 (ESP+4) as lyr_back */
- //       task_run(task_b[i], 2, i + 1);
-    }
-
-    /* Windows */
+    /* lyr_win */
     make_window8(lyr_win, 160, 68, "task_a", 1);
     make_textbox8(lyr_win, 8, 28, 144, 16, COLOUR_WHITE);
     cursor_c = COLOUR_BLACK;
     cursor_x = 8;
 
+    /* lyr_cons */
+    make_window8(lyr_cons, 256, 165, "console", 0);
+    make_textbox8(lyr_cons, 8, 28, 240, 128, COLOUR_BLACK);
+    task_cons = task_alloc();
+    task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+    task_cons->tss.eip = (int) &console_task; /* Run the same code */
+    task_cons->tss.es = 1 * 8;
+    task_cons->tss.cs = 2 * 8;
+    task_cons->tss.ss = 1 * 8;
+    task_cons->tss.ds = 1 * 8;
+    task_cons->tss.fs = 1 * 8;
+    task_cons->tss.gs = 1 * 8;
+    *((int *) (task_cons->tss.esp + 4)) = (int) lyr_cons; /* Arg0 (ESP+4) as lyr_back */
+    task_run(task_cons, 2, 2);
+
     /* Mouse Positioning and drawing */
+    init_mouse_cursor8(buf_mouse, COLOUR_INVIS);
     mx = (binfo->scrnx - MOU_SIZE * 2) / 2;
     my = (binfo->scrny - MOU_SIZE * 2) / 2;
 
     /* Layer Ordering */
     layer_slide(lyr_back, 0, 0);
     layer_slide(lyr_mouse, mx, my);
-    layer_slide(lyr_win, 100, 100);
-    layer_slide(lyr_win_b[0], 300, 100);
-    layer_slide(lyr_win_b[1], 100, 200);
-    layer_slide(lyr_win_b[2], 300, 200);
+    layer_slide(lyr_win, 50, 100);
+    layer_slide(lyr_cons, 200, 200);
+
     layer_setheight(lyr_back, 0);
     layer_setheight(lyr_win, 1);
-    layer_setheight(lyr_win_b[0], 2);
-    layer_setheight(lyr_win_b[1], 3);
-    layer_setheight(lyr_win_b[2], 4);
-    layer_setheight(lyr_mouse, 5);
+    layer_setheight(lyr_cons, 2);
+    layer_setheight(lyr_mouse, 3);
     
     /* Information Display */
     sprintf(string, "screen = %3d x %3d", binfo->scrnx, binfo->scrny);
@@ -189,44 +179,56 @@ void HariMain(void) {
             io_sti();
             /* Interrupt Dispatch */
             if (FIFO_TIMER_L <= i && i <= FIFO_TIMER_H) {
-                if (i == TDATA_10SEC) {
+                if (i == FIFO_10SEC) {
                     sprintf(string, "10[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
                     sprintf(string, "%10d", bmtimer);
-                } else if (i == TDATA_3SEC) {
+                } else if (i == FIFO_3SEC) {
                     sprintf(string, "3[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
                     bmtimer = 0;
-                } else if (i == TDATA_CURSOR_L) {
-                    /* Change the next data to TDATA_CURSOR_HIGH */
-                    timer_init(timer2, &fifo, TDATA_CURSOR_H);
-                    timer_settime(timer2, 50);
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_DCYAN, 8, 136, 15, 151);
-                    layerctl_refresh(lyr_back, 8, 136, 16, 152);
-                } else if (i == TDATA_CURSOR_H) {
-                    /* Change the next data to TDATA_CURSOR_LOW */
-                    timer_init(timer2, &fifo, TDATA_CURSOR_L);
-                    timer_settime(timer2, 50);
-                    draw_retangle8(buf_back, binfo->scrnx, COLOUR_WHITE, 8, 136, 15, 151);
-                    layerctl_refresh(lyr_back, 8, 136, 16, 152);
                 }
             } else if (FIFO_KEYBOARD_L <= i && i <= FIFO_KEYBOARD_H) {
                 /* Keyboard Info */
                 sprintf(string, "%02x", i - FIFO_KEYBOARD_L);
                 putstr8_asc_lyr(lyr_back, 200, 0, COLOUR_WHITE, COLOUR_DCYAN, string, 2);
                 /* Character */
-                if (i < FIFO_KEYBOARD_L + KB_NUMCHAR) {
-                    if (keytable[i - FIFO_KEYBOARD_L] != 0 && cursor_x < 144) {
-                        string[0] = keytable[i - FIFO_KEYBOARD_L];
-                        string[1] = '\0';
-                        putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_BLACK, COLOUR_WHITE, string, 1);
-                        cursor_x += 8;
+                if (i < FIFO_KEYBOARD_L + KB_NUMCHAR && keytable[i-256] != 0) {
+                    if (key_to == 0) {
+                        if (cursor_x < 128) {
+                            string[0] = keytable[i - FIFO_KEYBOARD_L];
+                            string[1] = '\0';
+                            putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_BLACK, COLOUR_WHITE, string, 1);
+                            cursor_x += 8;
+                        }
+                    } else {
+                        fifo32_put(&task_cons->fifo, keytable[i - 256] + 256);
                     }
                 }
                 /* BackSpace */
-                if (i == FIFO_KEYBOARD_L + 0x0e && cursor_x > 8) {
-                    putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_WHITE, COLOUR_WHITE, " ", 1);
-                    cursor_x -= 8;
+                else if (i == FIFO_KEYBOARD_L + 0x0e) {
+                    if (key_to == 0) {
+                        if (cursor_x > 8) {
+                            putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_WHITE, COLOUR_WHITE, " ", 1);
+                            cursor_x -= 8;
+                        }
+                    } else {
+                        fifo32_put(&task_cons->fifo, 0x08/* Backspace ASCII */ + 256);
+                    }
+                }
+                /* Tab */
+                else if (i == FIFO_KEYBOARD_L + 0x0f) {
+                    if (key_to == 0) {
+                        key_to = 1;
+                        make_wtitle8(lyr_win, lyr_win->bxsize, "task_a", 0);
+                        make_wtitle8(lyr_cons, lyr_cons->bxsize, "console", 1);
+                    } else {
+                        key_to = 0;
+                        make_wtitle8(lyr_win, lyr_win->bxsize, "task_a", 1);
+                        make_wtitle8(lyr_cons, lyr_cons->bxsize, "console", 0);
+                    }
+                    layerctl_refresh(lyr_win, 0, 0, lyr_win->bxsize, 21);
+                    layerctl_refresh(lyr_cons, 0, 0, lyr_cons->bxsize, 21);
                 }
                 draw_retangle8(lyr_win->buf, lyr_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
                 layerctl_refresh(lyr_win, cursor_x, 28, cursor_x + 8, 44);
@@ -264,34 +266,58 @@ void HariMain(void) {
     }
 }
 
-void task_b_main(int arg0) {
-	struct _fifo32 fifo;
-	struct _timer *timer_1s;
-	int i, fifobuf[128], count = 0, count0 = 0;
-    char string[12];
+void console_task(int arg0) {
+    struct _timer *timer;
+    struct _task *task = task_now();
+    int i, fifobuf[128];
+    int cursor_x = 16, cursor_c = COLOUR_BLACK;
+    char str[2];
     struct _layer *lyr = (struct _layer *) arg0;
 
-	fifo32_init(&fifo, 128, fifobuf, 0);
-	timer_1s = timer_alloc();
-	timer_init(timer_1s, &fifo, TDATA_1SEC);
-	timer_settime(timer_1s, 100);
+    /* A fifo32 alarm for current task */ 
+    fifo32_init(&task->fifo, 128, fifobuf, task);
+
+    timer = timer_alloc();
+    timer_init(timer, &task->fifo, 1);
+    timer_settime(timer, 50);
+
+    /* Prompt */
+    putstr8_asc_lyr(lyr, 8, 28, COLOUR_WHITE, COLOUR_BLACK, ">", 1);
 
 	while(1) {
         /* Calculate TimeSlice Interval */
-        count++;
 		io_cli();
-		if (fifo32_status(&fifo) == 0) {
+		if (fifo32_status(&task->fifo) == 0) {
+            task_sleep(task);
 			io_sti();
 		} else {
-			i = fifo32_get(&fifo);
+			i = fifo32_get(&task->fifo);
 			io_sti();
-			if (i == TDATA_1SEC) {
-                /* Benchmark Each Task */
-                sprintf(string, "%10d", count - count0);
-                putstr8_asc_lyr(lyr, 24, 28, COLOUR_BLACK, COLOUR_GREY, string, 11);
-                count0 = count;
-	            timer_settime(timer_1s, 100);
-			}
+            if (i == FIFO_CURSOR_H || i == FIFO_CURSOR_L) {
+                if (i == FIFO_CURSOR_H) {
+                    timer_init(timer, &task->fifo, FIFO_CURSOR_L);
+                    cursor_c = COLOUR_WHITE;
+                } else /* i == FIFO_CURSOR_L */ {
+                    timer_init(timer, &task->fifo, FIFO_CURSOR_H);
+                    cursor_c = COLOUR_BLACK;
+                }
+            } else if (FIFO_KEYBOARD_L <= i && i <= FIFO_KEYBOARD_H) {
+                if (i == 0x08 + 256 /* Backspace */) {
+                    if (cursor_x > 16) {
+                        putstr8_asc_lyr(lyr, cursor_x, 28, COLOUR_WHITE, COLOUR_BLACK, " ", 1);
+                        cursor_x -= 8;
+                    }
+                } else {
+                    if (cursor_x < 240) {
+                        str[0] = i - 256;
+                        str[1] = '\0';
+                        putstr8_asc_lyr(lyr, cursor_x, 28, COLOUR_WHITE, COLOUR_BLACK, str, 1);
+                        cursor_x += 8;
+                    }
+                }
+            }
+            draw_retangle8(lyr->buf, lyr->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
+            layerctl_refresh(lyr, cursor_x, 28, cursor_x + 8, 44);
 		}
 	}
 }

@@ -39,7 +39,7 @@ void store_cr0(int cr0);
 /* Task register */
 void load_tr(int tr);
 void farjmp(int eip, int cs);
-void task_b_main(int arg0);
+void console_task(int arg0);
 
 void write_mem8(int addr, int data);
 
