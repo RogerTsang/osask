@@ -7,7 +7,9 @@
 #define TASK_READY   1
 #define TASK_UNUSED  0
 
-#define MAX_TASKS 10
+#define MAX_TASKS 40
+#define MAX_TASKPLV 8
+#define MAX_TASKLEVELS 5
 #define TASK_GDT0 3
 
 struct _tss32 /* task status segment */ {
@@ -23,21 +25,36 @@ struct _tss32 /* task status segment */ {
 
 struct _task {
     int sel, flags;
+    int level, priority;
     struct _tss32 tss;
 };
 
-struct _taskctl {
+struct _tasklevel {
     /* Number of running tasks */
     int running;
     /* Current running task number */
     int now;
-    struct _task *tasks[MAX_TASKS];
+    struct _task *tasks[MAX_TASKPLV];
+};
+
+struct _taskctl {
+    /* Current running level */
+    int now_lv;
+    /* Level Change Indicator */
+    char lv_change;
+    /* Total number of levels in taskmgr */
+    struct _tasklevel level[MAX_TASKLEVELS];
+    /* Primitive Task Struct */
     struct _task tasks0[MAX_TASKS];
 };
 
 struct _task *task_init(struct _memman *memman);
 struct _task *task_alloc(void);
-void task_run(struct _task *task);
+void task_run(struct _task *task, int level, int priority);
 void task_sleep(struct _task *task);
 void task_switch(void);
+struct _task *task_now(void);
+void task_add(struct _task *task);
+void task_switchsub(void);
+void task_remove(struct _task *task);
 #endif

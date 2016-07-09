@@ -67,7 +67,8 @@ int  fifo32_put(struct _fifo32 *fifo, unsigned int data) {
     if (fifo->task != 0) {
         /* Wake up ready thread */
         if (fifo->task->flags != TASK_RUNNING) {
-            task_run(fifo->task);
+            /* Don't change its priority and level */
+            task_run(fifo->task, -1, 0);
         }
     }
     return 0;

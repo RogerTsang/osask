@@ -99,6 +99,7 @@ void HariMain(void) {
     /* Init Task */
     task_a = task_init(memman);
     fifo.task = task_a;
+    task_run(task_a, 1, 0);
     
     /* Layer Init */
     lyrctl = layerctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
@@ -137,7 +138,7 @@ void HariMain(void) {
         task_b[i]->tss.fs = 1 * 8;
         task_b[i]->tss.gs = 1 * 8;
         *((int *) (task_b[i]->tss.esp + 4)) = (int) lyr_win_b[i]; /* Arg0 (ESP+4) as lyr_back */
-        task_run(task_b[i]);
+        task_run(task_b[i], 2, i + 1);
     }
 
     /* Windows */
@@ -153,10 +154,10 @@ void HariMain(void) {
     /* Layer Ordering */
     layer_slide(lyr_back, 0, 0);
     layer_slide(lyr_mouse, mx, my);
-    layer_slide(lyr_win, 8, 56);
-    layer_slide(lyr_win_b[0], 168, 56);
-    layer_slide(lyr_win_b[1], 8, 116);
-    layer_slide(lyr_win_b[2], 168, 116);
+    layer_slide(lyr_win, 100, 100);
+    layer_slide(lyr_win_b[0], 300, 100);
+    layer_slide(lyr_win_b[1], 100, 200);
+    layer_slide(lyr_win_b[2], 300, 200);
     layer_setheight(lyr_back, 0);
     layer_setheight(lyr_win, 1);
     layer_setheight(lyr_win_b[0], 2);
@@ -179,8 +180,8 @@ void HariMain(void) {
         io_cli();
         if (fifo32_status(&fifo) == 0) {
             /* Change io_hlt() to task sleep */
-            task_sleep(task_a);
-            io_sti(); /* Enable Interrupt and halt - no interrupt */
+            task_sleep(task_a); /* task_a sleeps when there is no interrupt */
+            io_sti(); /* Enable Interrupt - someone calls fifo32_put() */
         } else {
             /* Read data from fifo buffer */
             i = fifo32_get(&fifo);
