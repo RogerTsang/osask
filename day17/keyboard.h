@@ -8,6 +8,8 @@
 #define KEYCMD_WRITE_MODE     0x60
 #define KBC_MODE              0x47
 
+#define KEYCMD_LED 0xed
+
 #define KB_BUFSIZE     32
 
 #include "fifo.h"

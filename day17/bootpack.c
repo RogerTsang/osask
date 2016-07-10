@@ -13,31 +13,38 @@
 #include "task.h"
 
 /* Keytable */
-static char keytable[KB_NUMCHAR] = {
-      0,   0, '1', '2', '3', '4', '5', '6', 
-    '7', '8', '9', '0', '-', '=',   0,   0,
-    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I',
-    'O', 'P', '[', ']',   0,   0, 'A', 'S',
-    'D', 'F', 'G', 'H', 'J', 'K', 'L', ';',
-   '\'',   0,   0,'\\', 'Z', 'X', 'C', 'V',
-    'B', 'N', 'M', ',', '.', '/',   0, '*',
-      0, ' ',   0,   0,   0,   0,   0,   0, 
-      0,   0,   0,   0,   0,   0,   0, '7', 
-    '8', '9', '-', '4', '5', '6', '+', '1',
-    '2', '3', '0', '.'
+static char keytable0[KB_NUMCHAR] = {
+      0,   0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',   0,   0,
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']',   0,   0, 'A', 'S',
+    'D', 'F', 'G', 'H', 'J', 'K', 'L', ';','\'',   0,   0,'\\', 'Z', 'X', 'C', 'V',
+    'B', 'N', 'M', ',', '.', '/',   0, '*',   0, ' ',   0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0,   0, '7', '8', '9', '-', '4', '5', '6', '+', '1',
+    '2', '3', '0', '.',   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,0x5c,   0,   0,   0,   0,   0,   0,   0,   0,   0,0x5c,   0,   0
 };
 
+static char keytable1[KB_NUMCHAR] = {
+      0,   0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+',   0,   0,
+    'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}',   0,   0, 'A', 'S',
+    'D', 'F', 'G', 'H', 'J', 'K', 'L', ':','\"',   0,   0, '|', 'Z', 'X', 'C', 'V',
+    'B', 'N', 'M', '<', '>', '?',   0, '*',   0, ' ',   0,   0,   0,   0,   0,   0, 
+      0,   0,   0,   0,   0,   0,   0, '7', '8', '9', '-', '4', '5', '6', '+', '1',
+    '2', '3', '0', '.',   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0
+};
 extern struct _timerctl timerctl;
 extern struct _memman *memman;
 
 void HariMain(void) {
     /* FIFO buffer */
-    struct _fifo32 fifo;
-    int fifobuf[FIFO_BUFSIZE];
+    struct _fifo32 fifo, keycmd;
+    int fifobuf[FIFO_BUFSIZE], keycmd_buf[FIFO_BUFSIZE];
     /* Fetch video info from asmhead */
     struct _bootinfo * binfo = (struct _bootinfo *) ADR_BOOTINFO;
-    int i, mx, my, bmtimer = 0;
-    char string[32];
+    int i, mx, my;
+    unsigned char string[32];
     /* Timer */
     struct _timer *timer, *timer1;
     /* Layer */
@@ -47,7 +54,7 @@ void HariMain(void) {
     unsigned char *buf_back, *buf_mouse, *buf_win, *buf_cons;
     /* Task */
     struct _task *task_a, *task_cons;
-    int key_to = 0 /* Switch Task ID */;
+    int key_to = 0, key_shift = 0, key_leds = (binfo->leds >> 4) & 7, keycmd_wait = -1;
     /* Mouse */
     struct _mousedec mdec;
     /* Memory info */
@@ -61,6 +68,9 @@ void HariMain(void) {
 
     /* Init FIFO buffer */
     fifo32_init(&fifo, FIFO_BUFSIZE, fifobuf, 0);
+    fifo32_init(&keycmd, FIFO_BUFSIZE, keycmd_buf, 0);
+    fifo32_put(&keycmd, KEYCMD_LED);
+    fifo32_put(&keycmd, key_leds);
 
     /* Timer 0 10sec */
     timer = timer_alloc();
@@ -164,8 +174,11 @@ void HariMain(void) {
     putstr8_asc_lyr(lyr_back, 6, 84, COLOUR_WHITE, COLOUR_DCYAN, string, 18);
 
     while (1) {
-        /* Benchmark Timer */
-        //bmtimer++;
+        if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {
+            keycmd_wait = fifo32_get(&keycmd);
+            wait_KBC_sendready();
+            io_out8(PORT_KEYDAT, keycmd_wait);
+        }
         /* Disable Interrupt */
         io_cli();
         if (fifo32_status(&fifo) == 0) {
@@ -182,27 +195,43 @@ void HariMain(void) {
                 if (i == FIFO_10SEC) {
                     sprintf(string, "10[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 104, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
-                    sprintf(string, "%10d", bmtimer);
                 } else if (i == FIFO_3SEC) {
                     sprintf(string, "3[sec]", mx, my);
                     putstr8_asc_lyr(lyr_back, 0, 120, COLOUR_WHITE, COLOUR_DCYAN, string, 7);
-                    bmtimer = 0;
                 }
             } else if (FIFO_KEYBOARD_L <= i && i <= FIFO_KEYBOARD_H) {
                 /* Keyboard Info */
                 sprintf(string, "%02x", i - FIFO_KEYBOARD_L);
                 putstr8_asc_lyr(lyr_back, 200, 0, COLOUR_WHITE, COLOUR_DCYAN, string, 2);
+                if (i < FIFO_KEYBOARD_L + KB_NUMCHAR) {
+                    /* Shift key handler */
+                    if (key_shift == 0) {
+                        string[0] = keytable0[i - FIFO_KEYBOARD_L];
+                    } else {
+                        string[0] = keytable1[i - FIFO_KEYBOARD_L];
+                    }
+                } else {
+                    string[0] = 0;
+                }
+                /* A->a */
+                if ('A' <= string[0] && string[0] <= 'Z') {
+                    if (((key_leds & 4) == 0 && key_shift == 0) ||
+                        ((key_leds & 4) > 0 && key_shift > 0)) {
+                        putstr8_asc_lyr(lyr_back, 200, 200, COLOUR_WHITE, COLOUR_DCYAN, string, 1);
+                        string[0] += 'a' - 'A'; /* Change to lower case */
+                    }
+                }
+                string[1] = 0;
                 /* Character */
-                if (i < FIFO_KEYBOARD_L + KB_NUMCHAR && keytable[i-256] != 0) {
+                if (string[0] != 0) {
+                    /* Data stream dispatcher */
                     if (key_to == 0) {
                         if (cursor_x < 128) {
-                            string[0] = keytable[i - FIFO_KEYBOARD_L];
-                            string[1] = '\0';
                             putstr8_asc_lyr(lyr_win, cursor_x, 28, COLOUR_BLACK, COLOUR_WHITE, string, 1);
                             cursor_x += 8;
                         }
                     } else {
-                        fifo32_put(&task_cons->fifo, keytable[i - 256] + 256);
+                        fifo32_put(&task_cons->fifo, string[0] + 256);
                     }
                 }
                 /* BackSpace */
@@ -229,6 +258,46 @@ void HariMain(void) {
                     }
                     layerctl_refresh(lyr_win, 0, 0, lyr_win->bxsize, 21);
                     layerctl_refresh(lyr_cons, 0, 0, lyr_cons->bxsize, 21);
+                }
+                /* Shift */
+                else if (i == FIFO_KEYBOARD_L + 0x2a /* LS Down */) {
+                    key_shift |= 1;
+                }
+                else if (i == FIFO_KEYBOARD_L + 0x36 /* RS Down */) {
+                    key_shift |= 2;
+                }
+                else if (i == FIFO_KEYBOARD_L + 0xaa /* LS Up   */) {
+                    key_shift &= ~1;
+                }
+                else if (i == FIFO_KEYBOARD_L + 0xb6 /* RS Up   */) {
+                    key_shift &= ~2;
+                }
+                /* Caps Lock*/
+                else if (i == FIFO_KEYBOARD_L + 0x3a) {
+                    key_leds ^= 4; /* Toggle CapsLock */
+                    fifo32_put(&keycmd, KEYCMD_LED);
+                    fifo32_put(&keycmd, key_leds);
+                }
+                /* Num Lock */
+                else if (i == FIFO_KEYBOARD_L + 0x45) {
+                    key_leds ^= 2;
+                    fifo32_put(&keycmd, KEYCMD_LED);
+                    fifo32_put(&keycmd, key_leds);
+                }
+                /* Scroll Lock */
+                else if (i == FIFO_KEYBOARD_L + 0x46) {
+                    key_leds ^= 1;
+                    fifo32_put(&keycmd, KEYCMD_LED);
+                    fifo32_put(&keycmd, key_leds);
+                }
+                /* Successfully Receive Data */
+                else if (i == FIFO_KEYBOARD_L + 0xfa) {
+                    keycmd_wait = -1;
+                }
+                /* Waiting */
+                else if (i == FIFO_KEYBOARD_L + 0xfe) {
+                    wait_KBC_sendready();
+                    io_out8(PORT_KEYDAT, keycmd_wait);
                 }
                 draw_retangle8(lyr_win->buf, lyr_win->bxsize, cursor_c, cursor_x, 28, cursor_x + 7, 43);
                 layerctl_refresh(lyr_win, cursor_x, 28, cursor_x + 8, 44);
